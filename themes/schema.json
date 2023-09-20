@@ -310,6 +310,7 @@
             "text",
             "terraform",
             "ui5tooling",
+            "umbraco",
             "unity",
             "upgrade",
             "wakatime",
@@ -442,6 +443,40 @@
           "then": {
             "title": "Project Segment",
             "description": "https://ohmyposh.dev/docs/segments/project"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "npm"
+              }
+            }
+          },
+          "then": {
+            "title": "Umbraco Segment",
+            "description": "https://ohmyposh.dev/docs/segments/umbraco",
+            "properties": {
+              "properties": {
+                "properties": {
+                  "home_enabled": {
+                    "$ref": "#/definitions/home_enabled"
+                  },
+                  "fetch_version": {
+                    "$ref": "#/definitions/fetch_version"
+                  },
+                  "display_mode": {
+                    "$ref": "#/definitions/display_mode"
+                  },
+                  "missing_command_text": {
+                    "$ref": "#/definitions/missing_command_text"
+                  },
+                  "version_url_template": {
+                    "$ref": "#/definitions/version_url_template"
+                  }
+                }
+              }
+            }
           }
         },
         {

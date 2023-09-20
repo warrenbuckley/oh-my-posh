@@ -9,6 +9,15 @@
           "foreground": "#ffffff",
           "leading_diamond": "\ue0b6",
           "style": "diamond",
+          "trailing_diamond": "\ue0b0",
+          "type": "umbraco",
+          "template": "Umbraco Modern:{{ .IsModernUmbraco }} Found:{{ .FoundUmbraco }}"
+        },
+        {
+          "background": "#c386f1",
+          "foreground": "#ffffff",
+          "leading_diamond": "\ue0b6",
+          "style": "diamond",
           "template": " {{ .UserName }} ",
           "trailing_diamond": "\ue0b0",
           "type": "session"
