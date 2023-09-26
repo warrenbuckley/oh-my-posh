@@ -95,7 +95,7 @@ func (u *Umbraco) Enabled() bool {
 
 			// Loop over all the package references
 			for _, packageReference := range csProjPackages.PackageReferences {
-				if packageReference.Name == strings.ToLower("umbraco.cms") {
+				if strings.ToLower(packageReference.Name) == strings.ToLower("umbraco.cms") {
 					u.IsModernUmbraco = true
 					u.FoundUmbraco = true
 
