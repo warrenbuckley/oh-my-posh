@@ -427,19 +427,26 @@ func (env *Shell) HasFiles(pattern string) bool {
 	defer env.Trace(time.Now(), pattern)
 	cwd := env.Pwd()
 	fileSystem := os.DirFS(cwd)
-	matches, err := fs.Glob(fileSystem, pattern)
+	matches, err := fs.ReadDir(fileSystem, ".")
 	if err != nil {
 		env.Error(err)
 		env.Debug("false")
 		return false
 	}
 	for _, match := range matches {
-		file, err := fs.Stat(fileSystem, match)
-		if err != nil || file.IsDir() {
+		if match.IsDir() {
 			continue
 		}
-		env.Debug("true")
-		return true
+		ok, err := filepath.Match(strings.ToLower(pattern), strings.ToLower(match.Name()))
+		if err != nil {
+			env.Error(err)
+			env.Debug("false")
+			return false
+		}
+		if ok {
+			env.Debug("true")
+			return true
+		}
 	}
 	env.Debug("false")
 	return false
@@ -505,17 +512,26 @@ func (env *Shell) ResolveSymlink(path string) (string, error) {
 
 func (env *Shell) FileContent(file string) string {
 	defer env.Trace(time.Now(), file)
-	if !filepath.IsAbs(file) {
-		file = filepath.Join(env.Pwd(), file)
-	}
-	content, err := os.ReadFile(file)
+	cwd := env.Pwd()
+	matches, err := filepath.Glob(filepath.Join(cwd, "*"))
 	if err != nil {
 		env.Error(err)
 		return ""
 	}
-	fileContent := string(content)
-	env.Debug(fileContent)
-	return fileContent
+	for _, match := range matches {
+		if strings.EqualFold(filepath.Base(match), filepath.Base(file)) {
+			content, err := os.ReadFile(match)
+			if err != nil {
+				env.Error(err)
+				return ""
+			}
+			fileContent := string(content)
+			env.Debug(fileContent)
+			return fileContent
+		}
+	}
+	env.Error(fmt.Errorf("file not found: %s", file))
+	return ""
 }
 
 func (env *Shell) LsDir(path string) []fs.DirEntry {

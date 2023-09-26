@@ -11,7 +11,11 @@
           "style": "diamond",
           "trailing_diamond": "\ue0b0",
           "type": "umbraco",
-          "template": "\udb81\udd49 {{ .Version }}  Umbraco Modern:{{ .IsModernUmbraco }}"
+          "template": "\udb81\udd49 {{ .Version }} ",
+          "background_templates": [
+            "{{ if .IsModernUmbraco }}#e60e9e{{ end }}",
+            "{{ if .IsLegacyUmbraco }}#fdc200{{ end }}"
+          ]
         },
         {
           "background": "#c386f1",

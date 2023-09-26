@@ -23,8 +23,8 @@ type CSProj struct {
 
 type WebConfig struct {
 	AppSettings []struct {
-		Key   string `xml:"Key,attr"`
-		Value string `xml:"Value,attr"`
+		Key   string `xml:"key,attr"` // TODO: What happens if the web.config has the attribute as uppercase Key="" ?
+		Value string `xml:"value,attr"`
 	} `xml:"appSettings>add"`
 }
 
@@ -59,6 +59,7 @@ func (u *Umbraco) Enabled() bool {
 	}
 
 	// Check if we have a .csproj OR a web.config in the CWD
+	// TODO: What if file name on disk is Web.config or web.Config?
 	if !u.env.HasFiles("*.csproj") && !u.env.HasFiles("web.config") {
 		u.env.Debug("UMBRACO: NO CSProj or web.config found")
 		return false
@@ -160,7 +161,12 @@ func (u *Umbraco) TryFindLegacyUmbraco() bool {
 		if strings.EqualFold(appSetting.Key, "umbraco.core.configurationstatus") {
 			u.IsLegacyUmbraco = true
 			u.FoundUmbraco = true
-			u.Version = appSetting.Value
+
+			if appSetting.Value == "" {
+				u.Version = "Unknown"
+			} else {
+				u.Version = appSetting.Value
+			}
 
 			return true
 		}
