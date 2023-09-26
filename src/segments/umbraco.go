@@ -1,6 +1,7 @@
 package segments
 
 import (
+	"encoding/xml"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +13,22 @@ const (
 	umbracoFolderName = "umbraco"
 )
 
+type CSProj struct {
+	PackageReferences []struct {
+		Name    string `xml:"Include,attr"`
+		Version string `xml:"Version,attr"`
+	} `xml:"ItemGroup>PackageReference"`
+}
+
+// type CSProj struct {
+// 	PackageReferences []PackageReference `xml:"ItemGroup>PackageReference"`
+// }
+
+// type PackageReference struct {
+// 	Name    string `xml:"Include,attr"`
+// 	Version string `xml:"Version,attr"`
+// }
+
 type Umbraco struct {
 	props properties.Properties
 	env   platform.Environment
@@ -19,12 +36,10 @@ type Umbraco struct {
 	FoundUmbraco    bool
 	IsModernUmbraco bool
 	IsLegacyUmbraco bool
+	Version         string
 }
 
-// type UserConfig struct {
-// 	DefaultEndpoint string                    `json:"defaultEndpoint"`
-// 	Endpoints       map[string]EndpointConfig `json:"endpoints"`
-// }
+// Create a struct to use with XML Unmrashal for CSProj files to find PackageReferences items
 
 func (u *Umbraco) Enabled() bool {
 	u.env.Debug("UMBRACO: Checking if we enable segment")
@@ -70,13 +85,24 @@ func (u *Umbraco) Enabled() bool {
 			// Read the file contents of the csproj file
 			contents := u.env.FileContent(file)
 
-			if strings.Contains(contents, "PackageReference Include=\"Umbraco.Cms\"") {
-				u.IsModernUmbraco = true
-				u.FoundUmbraco = true
-				u.env.Debug("UMBRACO: Found Umbraco.Cms in " + file)
-				return true
-			} else {
-				u.env.Debug("UMBRACO: Found file but not the contents")
+			// TODO use XML unmarshal on contents
+			csProjPackages := CSProj{}
+			err := xml.Unmarshal([]byte(contents), &csProjPackages)
+
+			if err != nil {
+				// Log an error
+			}
+
+			// Loop over all the package references
+			for _, packageReference := range csProjPackages.PackageReferences {
+				if packageReference.Name == strings.ToLower("umbraco.cms") {
+					u.IsModernUmbraco = true
+					u.FoundUmbraco = true
+
+					u.Version = packageReference.Version
+					u.env.Debug("UMBRACO: Found Umbraco.Cms in " + file)
+					return true
+				}
 			}
 		}
 	} else {
@@ -88,28 +114,6 @@ func (u *Umbraco) Enabled() bool {
 	// Got here then we should have returned true by now...
 	u.FoundUmbraco = false
 	return false
-
-	// if !u.env.HasFiles(sitecoreFileName) || !u.env.HasFiles(path.Join(sitecoreFolderName, userFileName)) {
-	// 	return false
-	// }
-
-	// var userConfig, err = getUserConfig(u)
-
-	// if err != nil {
-	// 	return false
-	// }
-
-	// u.EndpointName = userConfig.getDefaultEndpoint()
-
-	// displayDefault := u.props.GetBool(properties.DisplayDefault, true)
-
-	// if !displayDefault && u.EndpointName == defaultEnpointName {
-	// 	return false
-	// }
-
-	// if endpoint := userConfig.getEndpoint(u.EndpointName); endpoint != nil && len(endpoint.Host) > 0 {
-	// 	u.CmHost = endpoint.Host
-	// }
 }
 
 func (u *Umbraco) Template() string {
@@ -120,25 +124,6 @@ func (u *Umbraco) Init(props properties.Properties, env platform.Environment) {
 	u.props = props
 	u.env = env
 }
-
-// func getUserConfig(s *Sitecore) (*UserConfig, error) {
-// 	userJSON := s.env.FileContent(path.Join(sitecoreFolderName, userFileName))
-// 	var userConfig UserConfig
-
-// 	if err := json.Unmarshal([]byte(userJSON), &userConfig); err != nil {
-// 		return nil, err
-// 	}
-
-// 	return &userConfig, nil
-// }
-
-// func (u *UserConfig) getDefaultEndpoint() string {
-// 	if len(u.DefaultEndpoint) > 0 {
-// 		return u.DefaultEndpoint
-// 	}
-
-// 	return defaultEnpointName
-// }
 
 // func (u *UserConfig) getEndpoint(name string) *EndpointConfig {
 // 	endpoint, exists := u.Endpoints[name]
