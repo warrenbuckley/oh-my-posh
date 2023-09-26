@@ -10,8 +10,6 @@ import (
 
 const (
 	umbracoFolderName = "umbraco"
-	// userFileName       = "user.json"
-	// defaultEnpointName = "default"
 )
 
 type Umbraco struct {
@@ -21,15 +19,7 @@ type Umbraco struct {
 	FoundUmbraco    bool
 	IsModernUmbraco bool
 	IsLegacyUmbraco bool
-
-	// Was sitecore stuff
-	EndpointName string
-	CmHost       string
 }
-
-// type EndpointConfig struct {
-// 	Host string `json:"host"`
-// }
 
 // type UserConfig struct {
 // 	DefaultEndpoint string                    `json:"defaultEndpoint"`
