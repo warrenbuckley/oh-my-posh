@@ -11,6 +11,7 @@ import (
 
 const (
 	umbracoFolderName = "umbraco"
+	umbracoWebConfig  = "web.config"
 )
 
 type CSProj struct {
@@ -18,6 +19,13 @@ type CSProj struct {
 		Name    string `xml:"Include,attr"`
 		Version string `xml:"Version,attr"`
 	} `xml:"ItemGroup>PackageReference"`
+}
+
+type WebConfig struct {
+	AppSettings []struct {
+		Key   string `xml:"Key,attr"`
+		Value string `xml:"Value,attr"`
+	} `xml:"appSettings>add"`
 }
 
 // type CSProj struct {
@@ -57,67 +65,22 @@ func (u *Umbraco) Enabled() bool {
 	}
 
 	// Modern .NET Core based Umbraco
-	if u.env.HasFiles("*.csproj") {
-		u.env.Debug("UMBRACO: Found one or more .csproj files")
-
-		// Open file contents and look for Umbraco.Cms
-		// But there is no guranatee that the user my have commented it out
-		// <!-- <PackageReference Include="Umbraco.Cms" Version="12.1.2"/> -->
-		// <PackageReference Include="Umbraco.Cms" Version="12.1.2"/>
-
-		// Find all .csproj files
-		// searchDir := "."
-		searchPattern := "*.csproj"
-
-		// Get a list of all files that match the search pattern
-		files, err := filepath.Glob(searchPattern)
-
-		if err != nil {
-			u.env.Debug("UMBRACO: Error while searching for .csproj files")
-			u.env.Debug(err.Error())
-			return false
-		}
-
-		// Loop over all the files that have a .csproj extension
-		for _, file := range files {
-			u.env.Debug("UMBRACO: Trying to open file at " + file)
-
-			// Read the file contents of the csproj file
-			contents := u.env.FileContent(file)
-
-			// TODO use XML unmarshal on contents
-			csProjPackages := CSProj{}
-			err := xml.Unmarshal([]byte(contents), &csProjPackages)
-
-			if err != nil {
-				// Log an error
-			}
-
-			// Loop over all the package references
-			for _, packageReference := range csProjPackages.PackageReferences {
-				if strings.ToLower(packageReference.Name) == strings.ToLower("umbraco.cms") {
-					u.IsModernUmbraco = true
-					u.FoundUmbraco = true
-
-					u.Version = packageReference.Version
-					u.env.Debug("UMBRACO: Found Umbraco.Cms in " + file)
-					return true
-				}
-			}
-		}
-	} else {
-		u.env.Debug("UMBRACO: SAD face")
-		u.FoundUmbraco = false
-		return false
+	if u.TryFindModernUmbraco() {
+		return true
 	}
 
-	// Got here then we should have returned true by now...
+	// Legacy .NET Framework based Umbraco
+	if u.TryFindLegacyUmbraco() {
+		return true
+	}
+
+	// If we have got here then neither modern or legacy Umbraco was NOT found
 	u.FoundUmbraco = false
 	return false
 }
 
 func (u *Umbraco) Template() string {
-	return "UMBRACO !"
+	return "{{.Version}} "
 }
 
 func (u *Umbraco) Init(props properties.Properties, env platform.Environment) {
@@ -125,12 +88,83 @@ func (u *Umbraco) Init(props properties.Properties, env platform.Environment) {
 	u.env = env
 }
 
-// func (u *UserConfig) getEndpoint(name string) *EndpointConfig {
-// 	endpoint, exists := u.Endpoints[name]
+func (u *Umbraco) TryFindModernUmbraco() bool {
+	// Check we have one or more .csproj files in the CWD
+	if !u.env.HasFiles("*.csproj") {
+		return false
+	}
 
-// 	if exists {
-// 		return &endpoint
-// 	}
+	// Get a list of all files that match the search pattern
+	// Some folders could have multiple .csproj files in them
+	searchPattern := "*.csproj"
 
-// 	return nil
-// }
+	// Get a list of all files that match the search pattern
+	files, err := filepath.Glob(searchPattern)
+
+	if err != nil {
+		u.env.Debug("UMBRACO: Error while searching for .csproj files")
+		u.env.Debug(err.Error())
+		return false
+	}
+
+	// Loop over all the files that have a .csproj extension
+	for _, file := range files {
+		u.env.Debug("UMBRACO: Trying to open file at " + file)
+
+		// Read the file contents of the csproj file
+		contents := u.env.FileContent(file)
+
+		// XML Unmarshal - map the contents of the file to the CSProj struct
+		csProjPackages := CSProj{}
+		err := xml.Unmarshal([]byte(contents), &csProjPackages)
+
+		if err != nil {
+			u.env.Debug("UMBRACO: Error while trying to parse XML of .csproj file")
+			u.env.Debug(err.Error())
+		}
+
+		// Loop over all the package references
+		for _, packageReference := range csProjPackages.PackageReferences {
+			if strings.EqualFold(packageReference.Name, "umbraco.cms") {
+				u.IsModernUmbraco = true
+				u.FoundUmbraco = true
+				u.Version = packageReference.Version
+
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (u *Umbraco) TryFindLegacyUmbraco() bool {
+	if !u.env.HasFiles(umbracoWebConfig) {
+		return false
+	}
+
+	// Read the file contents of the web.config in the CWD
+	contents := u.env.FileContent(umbracoWebConfig)
+
+	// XML Unmarshal - web.config all AppSettings keys
+	webConfigAppSettings := WebConfig{}
+	err := xml.Unmarshal([]byte(contents), &webConfigAppSettings)
+
+	if err != nil {
+		u.env.Debug("UMBRACO: Error while trying to parse XML of web.config file")
+		u.env.Debug(err.Error())
+	}
+
+	// Loop over all the package references
+	for _, appSetting := range webConfigAppSettings.AppSettings {
+		if strings.EqualFold(appSetting.Key, "umbraco.core.configurationstatus") {
+			u.IsLegacyUmbraco = true
+			u.FoundUmbraco = true
+			u.Version = appSetting.Value
+
+			return true
+		}
+	}
+
+	return false
+}
